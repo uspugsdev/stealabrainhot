@@ -14,7 +14,7 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
 
 -- 🧑‍💻 Lista de donos com nomes
-local donos = { "SeuNomeAqui", "OutroNomeDev" } -- coloque seu nome exato aqui
+local donos = { "SeuNomeAqui", "OutroNomeDev" }
 local IS_OWNER = table.find(donos, LocalPlayer.Name) ~= nil
 
 -- 🔐 Proteções contra kick e teleport
@@ -122,6 +122,30 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- 🫥 Invisibilidade do jogador
+local INVISIBILIDADE_ATIVADA = false
+local function alternarInvisibilidade()
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("Decal") then
+                part.Transparency = INVISIBILIDADE_ATIVADA and 1 or 0
+            end
+        end
+    end
+end
+
+-- 🌍 Subterrâneo com retorno
+local SUBTERRANEO_ATIVADO = false
+local alturaSubterranea = -100
+local alturaNormal = workspace:FindFirstChild("Terrain") and workspace.Terrain.Position.Y or 10
+
+local function alternarSubterraneo()
+    if HRP then
+        HRP.CFrame = CFrame.new(HRP.Position.X, SUBTERRANEO_ATIVADO and alturaSubterranea or alturaNormal, HRP.Position.Z)
+    end
+end
+
 -- 🎛️ Painel de botões
 Tools:Toggle{
     Name = "ESP All",
@@ -151,5 +175,21 @@ Tools:Button{
     Description = "Deixa tudo visível.",
     Callback = function()
         revelarTudo()
+    end
+}
+Tools:Toggle{
+    Name = "Invisibilidade",
+    Description = "Deixa o jogador invisível.",
+    Callback = function(state)
+        INVISIBILIDADE_ATIVADA = state
+        alternarInvisibilidade()
+    end
+}
+Tools:Toggle{
+    Name = "Subterrâneo",
+    Description = "Anda abaixo da terra e retorna.",
+    Callback = function(state)
+        SUBTERRANEO_ATIVADO = state
+        alternarSubterraneo()
     end
 }
