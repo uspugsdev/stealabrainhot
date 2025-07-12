@@ -1,228 +1,133 @@
--- 🔗 Lib da Interface
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
-local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
-local Main = UI:Tab{ Name = "Painel Geral" }
-local Sec = Main:Divider{ Name = "Ferramentas & Proteção" }
-
--- 📡 Serviços
+--[[ Painel Dev Integrado - ESP / Fly / Noclip / Speed ]]
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local PlayerGui = LP:WaitForChild("PlayerGui")
+local Character = LP.Character or LP.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
+local humanoid = Character:WaitForChild("Humanoid")
 
--- 🛑 Proteção avançada contra kick e ban
-pcall(function()
-    LocalPlayer.Kick = function() return end
-    local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local old = mt.__namecall
-    mt.__namecall = newcclosure(function(...)
-        local method = getnamecallmethod()
-        if tostring(method):lower():find("kick") or tostring(method):lower():find("ban") then
-            print("🚫 Tentativa de Kick/Ban interceptada.")
-            return
-        end
-        return old(...)
-    end)
-end)
+getgenv().espBoxes = {}
+getgenv().devFlyEnabled = false
+getgenv().noclipEnabled = false
+local flySpeed = 50
 
--- 🚷 Bloquear teleport
-local ultimaPosicao = HRP.Position
-HRP:GetPropertyChangedSignal("CFrame"):Connect(function()
-    if (HRP.Position - ultimaPosicao).Magnitude > 10 then
-        HRP.CFrame = CFrame.new(ultimaPosicao)
-        warn("🚷 Tentativa de teleporte bloqueada.")
-    else
-        ultimaPosicao = HRP.Position
+-- 🧠 ESP
+local function createESP(player)
+    if player ~= LP then
+        local box = Drawing.new("Text")
+        box.Visible = false
+        box.Color = Color3.fromRGB(0, 255, 255)
+        box.Size = 14
+        box.Center = true
+        box.Outline = true
+        box.Text = player.Name
+        getgenv().espBoxes[player] = box
     end
-end)
-
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("BasePart") and obj.Name:lower():find("teleport") then
-        obj.CanTouch = false
-        obj.CanQuery = false
-        obj.CanCollide = false
-        obj.Transparency = 1
-        obj.Anchored = true
-        obj.Name = "TeleportBlocked"
-    end
-end)
-
--- 👟 Speed Boost
-local speedAtivado = false
-local function updateSpeed()
-    local hum = Character:FindFirstChildWhichIsA("Humanoid")
-    if hum then hum.WalkSpeed = speedAtivado and 32 or 16 end
 end
-LocalPlayer.CharacterAdded:Connect(function(c)
-    Character = c
-    HRP = Character:WaitForChild("HumanoidRootPart")
-    updateSpeed()
+
+local function updateESP()
+    for player, box in pairs(getgenv().espBoxes) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            box.Position = Vector2.new(pos.X, pos.Y)
+            box.Visible = onScreen
+        else
+            box.Visible = false
+        end
+    end
+end
+
+for _, player in pairs(Players:GetPlayers()) do createESP(player) end
+Players.PlayerAdded:Connect(createESP)
+RunService.RenderStepped:Connect(updateESP)
+
+-- 🚀 Fly reto
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.LeftShift then flySpeed += 10 end
+    if input.KeyCode == Enum.KeyCode.LeftControl then flySpeed = math.max(flySpeed - 10, 10) end
 end)
 
--- 🚀 Fly com WASD
-local flyAtivado = false
 RunService.RenderStepped:Connect(function()
-    if flyAtivado and HRP then
+    if getgenv().devFlyEnabled then
         local dir = Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
-        HRP.Velocity = dir.Magnitude > 0 and dir.Unit * 50 or Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
+        HRP.Velocity = dir.Unit * flySpeed
     end
 end)
 
--- 🌫️ Noclip total
-local noclip = false
+-- 🚪 Noclip
 RunService.Stepped:Connect(function()
-    if noclip and Character then
-        for _, v in pairs(Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = false
+    if getgenv().noclipEnabled then
+        for _, part in ipairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
     end
 end)
 
--- 🫥 Invisibilidade
-local invisivel = false
-local function toggleInvis()
-    for _, v in pairs(Character:GetDescendants()) do
-        if v:IsA("BasePart") or v:IsA("Decal") then
-            v.Transparency = invisivel and 1 or 0
-        end
-    end
-end
+-- 🏃 Speed
+humanoid.WalkSpeed = 16
 
--- 🌍 Subterrâneo
-local subterraneo = false
-local function toggleSubterraneo()
-    if HRP then
-        HRP.CFrame = CFrame.new(HRP.Position.X, subterraneo and -100 or 10, HRP.Position.Z)
-    end
-end
+-- 🖼 Criar painel via script
+local gui = Instance.new("ScreenGui", PlayerGui)
+gui.Name = "DevPanel"
+gui.ResetOnSpawn = false
 
--- 👁️ ESP dos jogadores
-local function criarESP(player)
-    player.CharacterAdded:Connect(function(char)
-        wait(1)
-        local head = char:FindFirstChild("Head")
-        if head and not head:FindFirstChild("ESPGui") then
-            local esp = Instance.new("BillboardGui", head)
-            esp.Name = "ESPGui"
-            esp.Size = UDim2.new(0, 100, 0, 20)
-            esp.Adornee = head
-            esp.AlwaysOnTop = true
-            local label = Instance.new("TextLabel", esp)
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = player.Name
-            label.TextColor3 = Color3.fromRGB(0, 255, 255)
-            label.TextScaled = true
-        end
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 180)
+frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "Painel Dev 🛠"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+
+local function criarBotao(nome, posY, callback)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 14
+    btn.Text = "Ativar " .. nome
+
+    local ativo = false
+    btn.MouseButton1Click:Connect(function()
+        ativo = not ativo
+        btn.Text = (ativo and "Desativar " or "Ativar ") .. nome
+        callback(ativo)
     end)
 end
-for _, p in pairs(Players:GetPlayers()) do criarESP(p) end
-Players.PlayerAdded:Connect(criarESP)
 
--- 🔥 Expandir StealHitbox
-local function expandirSteal()
-    local steal = workspace:FindFirstChild("StealHitbox")
-    if steal and steal:IsA("BasePart") then
-        steal.Size = Vector3.new(100, 100, 100)
-        steal.Transparency = 0.4
-        steal.CanTouch = true
-        steal.CanQuery = true
-        steal.Material = Enum.Material.Neon
-        steal.Color = Color3.fromRGB(255, 0, 0)
-    end
-end
+-- Botões
+criarBotao("ESP", 40, function(state)
+    for _, box in pairs(getgenv().espBoxes or {}) do box.Visible = state end
+end)
 
--- 🚫 Neutralizar DeliveryHitbox
-local function neutralizarDelivery()
-    local part = workspace:FindFirstChild("DeliveryHitbox")
-    if part and part:IsA("BasePart") then
-        part.CanTouch = false
-        part.CanQuery = false
-        part.CanCollide = false
-        part.Anchored = true
-        part.Transparency = 1
-        part.Size = Vector3.new(0.1, 0.1, 0.1)
-        part.Name = "DeliveryHitboxDisabled"
-    end
-end
+criarBotao("Fly", 75, function(state)
+    getgenv().devFlyEnabled = state
+end)
 
--- 🧮 Campo para alterar Amount
-Sec:TextBox{
-    Name = "Editar Amount",
-    Description = "Escolha valor manual.",
-    Default = "1",
-    Callback = function(valor)
-        local num = tonumber(valor)
-        if num then
-            local a = workspace:FindFirstChild("Multiplier") and workspace.Multiplier:FindFirstChild("Main") and workspace.Multiplier.Main:FindFirstChild("Amount")
-            if a then
-                if a:IsA("TextLabel") then a.Text = tostring(num) end
-                if a:IsA("NumberValue") then a.Value = num end
-            end
-        end
-    end
-}
+criarBotao("Noclip", 110, function(state)
+    getgenv().noclipEnabled = state
+end)
 
--- 🎛️ Botões principais
-Sec:Toggle{
-    Name = "Speed Boost",
-    Description = "Corre mais rápido.",
-    Callback = function(state)
-        speedAtivado = state
-        updateSpeed()
-    end
-}
-Sec:Toggle{
-    Name = "Fly com WASD",
-    Description = "Voo livre.",
-    Callback = function(state)
-        flyAtivado = state
-    end
-}
-Sec:Toggle{
-    Name = "Noclip Total",
-    Description = "Atravessa tudo.",
-    Callback = function(state)
-        noclip = state
-    end
-}
-Sec:Toggle{
-    Name = "Invisibilidade",
-    Description = "Desaparece.",
-    Callback = function(state)
-        invisivel = state
-        toggleInvis()
-    end
-}
-Sec:Toggle{
-    Name = "Modo Subterrâneo",
-    Description = "Anda abaixo do mapa.",
-    Callback = function(state)
-        subterraneo = state
-        toggleSubterraneo()
-    end
-}
-Sec:Button{
-    Name = "Expandir StealHitbox",
-    Description = "Amplia zona de roubo.",
-    Callback = function()
-        expandirSteal()
-    end
-}
-Sec:Button{
-    Name = "Neutralizar DeliveryHitbox",
-    Description = "Desativa entrega.",
-    Callback = function()
-        neutralizarDelivery()
-    end
-}
+criarBotao("Speed", 145, function(state)
+    humanoid.WalkSpeed = state and 32 or 16
+end)
