@@ -1,142 +1,87 @@
--- Interface simplificada
-local gui = Instance.new("ScreenGui", game.CoreGui)
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 300)
-frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true
+-- 🔗 Biblioteca da Interface
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
+local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
+local Tab = UI:Tab{ Name = "Hitbox Tools" }
+local Sec = Tab:Divider{ Name = "Modificações" }
 
+-- 🔧 Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
 
--- Kick protection leve (sem getgc, hookfunction)
-LocalPlayer.Kick = function() return nil end
-
--- Noclip
-local noclip = false
-game:GetService("RunService").Stepped:Connect(function()
-    if noclip and Character then
-        for _, v in pairs(Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
+-- 🛡️ Anti-kick leve
+pcall(function()
+    LocalPlayer.Kick = function(reason) return end
 end)
 
--- Fly
-local flying = false
-local flySpeed = 50
-game:GetService("RunService").RenderStepped:Connect(function()
-    if flying and HRP then
-        local dir = Vector3.zero
-        local uis = game:GetService("UserInputService")
-        local cam = workspace.CurrentCamera
-        if uis:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-        if uis:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-        HRP.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
+-- 🧊 Desativar DeliveryHitbox
+local function desativarDelivery()
+    local part = workspace:FindFirstChild("DeliveryHitbox")
+    if part and part:IsA("BasePart") then
+        part.CanTouch = false
+        part.CanQuery = false
+        part.CanCollide = false
+        part.Anchored = true
+        part.Transparency = 1
+        part.Size = Vector3.new(0.1, 0.1, 0.1)
+        part.Name = "DeliveryHitboxDisabled"
+        print("DeliveryHitbox desativada com sucesso.")
     end
-end)
-
--- Speed
-local speedOn = false
-function toggleSpeed()
-    local hum = Character:FindFirstChildWhichIsA("Humanoid")
-    if hum then hum.WalkSpeed = speedOn and 32 or 16 end
 end
-LocalPlayer.CharacterAdded:Connect(function(c)
-    Character = c
-    HRP = Character:WaitForChild("HumanoidRootPart")
-    toggleSpeed()
-end)
 
--- ESP via BillboardGui
-function createESP(player)
-    player.CharacterAdded:Connect(function(char)
-        wait(1)
-        local head = char:FindFirstChild("Head")
-        if head and not head:FindFirstChild("ESPGui") then
-            local esp = Instance.new("BillboardGui", head)
-            esp.Name = "ESPGui"
-            esp.Size = UDim2.new(0, 100, 0, 20)
-            esp.Adornee = head
-            esp.AlwaysOnTop = true
-            local label = Instance.new("TextLabel", esp)
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.Text = player.Name
-            label.TextColor3 = Color3.fromRGB(0, 255, 255)
-            label.TextScaled = true
+-- 🔥 Aumentar StealHitbox
+local function expandirSteal()
+    local steal = workspace:FindFirstChild("StealHitbox")
+    if steal and steal:IsA("BasePart") then
+        steal.Size = Vector3.new(100, 100, 100)
+        steal.Transparency = 0.5
+        steal.CanTouch = true
+        steal.CanQuery = true
+        steal.CanCollide = false
+        steal.Material = Enum.Material.Neon
+        steal.Color = Color3.fromRGB(255, 0, 0)
+        print("StealHitbox expandida!")
+    end
+end
+
+-- 🛑 Anti-ban client (intercepta Kick/Ban no client)
+pcall(function()
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    local old = mt.__namecall
+    mt.__namecall = newcclosure(function(...)
+        local args = {...}
+        local method = getnamecallmethod()
+        if tostring(method):lower():find("kick") or tostring(method):lower():find("ban") then
+            print("Interceptado: tentativa de kick ou ban bloqueada.")
+            return
         end
+        return old(...)
     end)
-end
-for _, p in pairs(Players:GetPlayers()) do createESP(p) end
-Players.PlayerAdded:Connect(createESP)
+end)
 
--- Invisibilidade
-local invisible = false
-function toggleInvisible()
-    for _, v in pairs(Character:GetDescendants()) do
-        if v:IsA("BasePart") or v:IsA("Decal") then
-            v.Transparency = invisible and 1 or 0
-        end
+-- 🎛️ Botões do Painel
+Sec:Button{
+    Name = "Neutralizar Delivery",
+    Description = "Desativa o hitbox de entrega.",
+    Callback = function()
+        desativarDelivery()
     end
-end
+}
 
--- Subterrâneo
-local underworld = false
-function toggleUnder()
-    if HRP then
-        HRP.CFrame = CFrame.new(HRP.Position.X, underworld and -100 or 10, HRP.Position.Z)
+Sec:Button{
+    Name = "Expandir StealHitbox",
+    Description = "Amplia e energiza o hitbox de roubo.",
+    Callback = function()
+        expandirSteal()
     end
-end
+}
 
--- Reveal invisíveis
-function reveal()
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.Transparency > 0 then
-            part.Transparency = 0
-            part.CanTouch = true
-            part.CanQuery = true
-        end
+Sec:Button{
+    Name = "Aplicar Proteção Client",
+    Description = "Instala proteção contra kick/ban.",
+    Callback = function()
+        print("Proteções ativadas!")
     end
-end
-
--- Criação dos botões
-local function makeButton(name, action)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Position = UDim2.new(0, 5, 0, #frame:GetChildren()*35)
-    btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.MouseButton1Click:Connect(action)
-end
-
-makeButton("Speed Boost", function()
-    speedOn = not speedOn
-    toggleSpeed()
-end)
-makeButton("Fly", function()
-    flying = not flying
-end)
-makeButton("Noclip", function()
-    noclip = not noclip
-end)
-makeButton("Invisibilidade", function()
-    invisible = not invisible
-    toggleInvisible()
-end)
-makeButton("Subterrâneo", function()
-    underworld = not underworld
-    toggleUnder()
-end)
-makeButton("Revelar Invisíveis", function()
-    reveal()
-end)
-makeButton("ESP Players", function()
-    for _, p in pairs(Players:GetPlayers()) do createESP(p) end
-end)
+}
