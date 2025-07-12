@@ -1,29 +1,228 @@
--- 🔢 Campo numérico para Amount
-local currentValue = 1
+-- 🔗 Lib da Interface
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
+local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
+local Main = UI:Tab{ Name = "Painel Geral" }
+local Sec = Main:Divider{ Name = "Ferramentas & Proteção" }
 
-Sec:TextBox{
-    Name = "Valor da Amount",
-    Description = "Digite o valor desejado.",
-    Default = "100",
-    Callback = function(input)
-        local num = tonumber(input)
-        if num then
-            currentValue = num
+-- 📡 Serviços
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
 
-            -- Aplica valor em Amount se for TextLabel ou outra propriedade
-            local amountObj = workspace:FindFirstChild("Multiplier") and workspace.Multiplier:FindFirstChild("Main") and workspace.Multiplier.Main:FindFirstChild("Amount")
-            if amountObj then
-                if amountObj:IsA("TextLabel") or amountObj:IsA("TextButton") then
-                    amountObj.Text = tostring(num)
-                elseif amountObj:IsA("NumberValue") then
-                    amountObj.Value = num
-                elseif amountObj:IsA("BasePart") then
-                    amountObj.Size = Vector3.new(num, amountObj.Size.Y, amountObj.Size.Z)
-                end
-            end
-            print("Valor atualizado para:", num)
-        else
-            warn("Entrada inválida: digite um número.")
+-- 🛑 Proteção avançada contra kick e ban
+pcall(function()
+    LocalPlayer.Kick = function() return end
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    local old = mt.__namecall
+    mt.__namecall = newcclosure(function(...)
+        local method = getnamecallmethod()
+        if tostring(method):lower():find("kick") or tostring(method):lower():find("ban") then
+            print("🚫 Tentativa de Kick/Ban interceptada.")
+            return
         end
+        return old(...)
+    end)
+end)
+
+-- 🚷 Bloquear teleport
+local ultimaPosicao = HRP.Position
+HRP:GetPropertyChangedSignal("CFrame"):Connect(function()
+    if (HRP.Position - ultimaPosicao).Magnitude > 10 then
+        HRP.CFrame = CFrame.new(ultimaPosicao)
+        warn("🚷 Tentativa de teleporte bloqueada.")
+    else
+        ultimaPosicao = HRP.Position
+    end
+end)
+
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("BasePart") and obj.Name:lower():find("teleport") then
+        obj.CanTouch = false
+        obj.CanQuery = false
+        obj.CanCollide = false
+        obj.Transparency = 1
+        obj.Anchored = true
+        obj.Name = "TeleportBlocked"
+    end
+end)
+
+-- 👟 Speed Boost
+local speedAtivado = false
+local function updateSpeed()
+    local hum = Character:FindFirstChildWhichIsA("Humanoid")
+    if hum then hum.WalkSpeed = speedAtivado and 32 or 16 end
+end
+LocalPlayer.CharacterAdded:Connect(function(c)
+    Character = c
+    HRP = Character:WaitForChild("HumanoidRootPart")
+    updateSpeed()
+end)
+
+-- 🚀 Fly com WASD
+local flyAtivado = false
+RunService.RenderStepped:Connect(function()
+    if flyAtivado and HRP then
+        local dir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
+        HRP.Velocity = dir.Magnitude > 0 and dir.Unit * 50 or Vector3.zero
+    end
+end)
+
+-- 🌫️ Noclip total
+local noclip = false
+RunService.Stepped:Connect(function()
+    if noclip and Character then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- 🫥 Invisibilidade
+local invisivel = false
+local function toggleInvis()
+    for _, v in pairs(Character:GetDescendants()) do
+        if v:IsA("BasePart") or v:IsA("Decal") then
+            v.Transparency = invisivel and 1 or 0
+        end
+    end
+end
+
+-- 🌍 Subterrâneo
+local subterraneo = false
+local function toggleSubterraneo()
+    if HRP then
+        HRP.CFrame = CFrame.new(HRP.Position.X, subterraneo and -100 or 10, HRP.Position.Z)
+    end
+end
+
+-- 👁️ ESP dos jogadores
+local function criarESP(player)
+    player.CharacterAdded:Connect(function(char)
+        wait(1)
+        local head = char:FindFirstChild("Head")
+        if head and not head:FindFirstChild("ESPGui") then
+            local esp = Instance.new("BillboardGui", head)
+            esp.Name = "ESPGui"
+            esp.Size = UDim2.new(0, 100, 0, 20)
+            esp.Adornee = head
+            esp.AlwaysOnTop = true
+            local label = Instance.new("TextLabel", esp)
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = player.Name
+            label.TextColor3 = Color3.fromRGB(0, 255, 255)
+            label.TextScaled = true
+        end
+    end)
+end
+for _, p in pairs(Players:GetPlayers()) do criarESP(p) end
+Players.PlayerAdded:Connect(criarESP)
+
+-- 🔥 Expandir StealHitbox
+local function expandirSteal()
+    local steal = workspace:FindFirstChild("StealHitbox")
+    if steal and steal:IsA("BasePart") then
+        steal.Size = Vector3.new(100, 100, 100)
+        steal.Transparency = 0.4
+        steal.CanTouch = true
+        steal.CanQuery = true
+        steal.Material = Enum.Material.Neon
+        steal.Color = Color3.fromRGB(255, 0, 0)
+    end
+end
+
+-- 🚫 Neutralizar DeliveryHitbox
+local function neutralizarDelivery()
+    local part = workspace:FindFirstChild("DeliveryHitbox")
+    if part and part:IsA("BasePart") then
+        part.CanTouch = false
+        part.CanQuery = false
+        part.CanCollide = false
+        part.Anchored = true
+        part.Transparency = 1
+        part.Size = Vector3.new(0.1, 0.1, 0.1)
+        part.Name = "DeliveryHitboxDisabled"
+    end
+end
+
+-- 🧮 Campo para alterar Amount
+Sec:TextBox{
+    Name = "Editar Amount",
+    Description = "Escolha valor manual.",
+    Default = "1",
+    Callback = function(valor)
+        local num = tonumber(valor)
+        if num then
+            local a = workspace:FindFirstChild("Multiplier") and workspace.Multiplier:FindFirstChild("Main") and workspace.Multiplier.Main:FindFirstChild("Amount")
+            if a then
+                if a:IsA("TextLabel") then a.Text = tostring(num) end
+                if a:IsA("NumberValue") then a.Value = num end
+            end
+        end
+    end
+}
+
+-- 🎛️ Botões principais
+Sec:Toggle{
+    Name = "Speed Boost",
+    Description = "Corre mais rápido.",
+    Callback = function(state)
+        speedAtivado = state
+        updateSpeed()
+    end
+}
+Sec:Toggle{
+    Name = "Fly com WASD",
+    Description = "Voo livre.",
+    Callback = function(state)
+        flyAtivado = state
+    end
+}
+Sec:Toggle{
+    Name = "Noclip Total",
+    Description = "Atravessa tudo.",
+    Callback = function(state)
+        noclip = state
+    end
+}
+Sec:Toggle{
+    Name = "Invisibilidade",
+    Description = "Desaparece.",
+    Callback = function(state)
+        invisivel = state
+        toggleInvis()
+    end
+}
+Sec:Toggle{
+    Name = "Modo Subterrâneo",
+    Description = "Anda abaixo do mapa.",
+    Callback = function(state)
+        subterraneo = state
+        toggleSubterraneo()
+    end
+}
+Sec:Button{
+    Name = "Expandir StealHitbox",
+    Description = "Amplia zona de roubo.",
+    Callback = function()
+        expandirSteal()
+    end
+}
+Sec:Button{
+    Name = "Neutralizar DeliveryHitbox",
+    Description = "Desativa entrega.",
+    Callback = function()
+        neutralizarDelivery()
     end
 }
