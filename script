@@ -1,87 +1,29 @@
--- 🔗 Biblioteca da Interface
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
-local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
-local Tab = UI:Tab{ Name = "Hitbox Tools" }
-local Sec = Tab:Divider{ Name = "Modificações" }
+-- 🔢 Campo numérico para Amount
+local currentValue = 1
 
--- 🔧 Serviços
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HRP = Character:WaitForChild("HumanoidRootPart")
+Sec:TextBox{
+    Name = "Valor da Amount",
+    Description = "Digite o valor desejado.",
+    Default = "100",
+    Callback = function(input)
+        local num = tonumber(input)
+        if num then
+            currentValue = num
 
--- 🛡️ Anti-kick leve
-pcall(function()
-    LocalPlayer.Kick = function(reason) return end
-end)
-
--- 🧊 Desativar DeliveryHitbox
-local function desativarDelivery()
-    local part = workspace:FindFirstChild("DeliveryHitbox")
-    if part and part:IsA("BasePart") then
-        part.CanTouch = false
-        part.CanQuery = false
-        part.CanCollide = false
-        part.Anchored = true
-        part.Transparency = 1
-        part.Size = Vector3.new(0.1, 0.1, 0.1)
-        part.Name = "DeliveryHitboxDisabled"
-        print("DeliveryHitbox desativada com sucesso.")
-    end
-end
-
--- 🔥 Aumentar StealHitbox
-local function expandirSteal()
-    local steal = workspace:FindFirstChild("StealHitbox")
-    if steal and steal:IsA("BasePart") then
-        steal.Size = Vector3.new(100, 100, 100)
-        steal.Transparency = 0.5
-        steal.CanTouch = true
-        steal.CanQuery = true
-        steal.CanCollide = false
-        steal.Material = Enum.Material.Neon
-        steal.Color = Color3.fromRGB(255, 0, 0)
-        print("StealHitbox expandida!")
-    end
-end
-
--- 🛑 Anti-ban client (intercepta Kick/Ban no client)
-pcall(function()
-    local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local old = mt.__namecall
-    mt.__namecall = newcclosure(function(...)
-        local args = {...}
-        local method = getnamecallmethod()
-        if tostring(method):lower():find("kick") or tostring(method):lower():find("ban") then
-            print("Interceptado: tentativa de kick ou ban bloqueada.")
-            return
+            -- Aplica valor em Amount se for TextLabel ou outra propriedade
+            local amountObj = workspace:FindFirstChild("Multiplier") and workspace.Multiplier:FindFirstChild("Main") and workspace.Multiplier.Main:FindFirstChild("Amount")
+            if amountObj then
+                if amountObj:IsA("TextLabel") or amountObj:IsA("TextButton") then
+                    amountObj.Text = tostring(num)
+                elseif amountObj:IsA("NumberValue") then
+                    amountObj.Value = num
+                elseif amountObj:IsA("BasePart") then
+                    amountObj.Size = Vector3.new(num, amountObj.Size.Y, amountObj.Size.Z)
+                end
+            end
+            print("Valor atualizado para:", num)
+        else
+            warn("Entrada inválida: digite um número.")
         end
-        return old(...)
-    end)
-end)
-
--- 🎛️ Botões do Painel
-Sec:Button{
-    Name = "Neutralizar Delivery",
-    Description = "Desativa o hitbox de entrega.",
-    Callback = function()
-        desativarDelivery()
-    end
-}
-
-Sec:Button{
-    Name = "Expandir StealHitbox",
-    Description = "Amplia e energiza o hitbox de roubo.",
-    Callback = function()
-        expandirSteal()
-    end
-}
-
-Sec:Button{
-    Name = "Aplicar Proteção Client",
-    Description = "Instala proteção contra kick/ban.",
-    Callback = function()
-        print("Proteções ativadas!")
     end
 }
