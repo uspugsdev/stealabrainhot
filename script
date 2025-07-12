@@ -1,4 +1,4 @@
--- 🎨 Interface de Ferramentas
+-- 🎨 Interface
 local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/refs/heads/main/script"))()
 local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
 local Main = UI:Tab{ Name = "Main" }
@@ -16,9 +16,14 @@ local HRP = Character:WaitForChild("HumanoidRootPart")
 -- 👟 Speed Boost
 local WALKSPEED_ENABLED = false
 local function updateWalkSpeed()
-    local hum = Character:FindFirstChildOfClass("Humanoid")
+    local hum = Character:FindFirstChildWhichIsA("Humanoid")
     if hum then hum.WalkSpeed = WALKSPEED_ENABLED and 32 or 16 end
 end
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    HRP = Character:WaitForChild("HumanoidRootPart")
+    updateWalkSpeed()
+end)
 
 -- 🚀 Fly
 local FLY_ENABLED = false
@@ -30,7 +35,7 @@ RunService.RenderStepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
-        HRP.Velocity = dir.Unit * flySpeed
+        HRP.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
     end
 end)
 
@@ -71,8 +76,8 @@ local function createESP(player)
     player.CharacterAdded:Connect(function() wait(1) attach() end)
     attach()
 end
-for _, p in pairs(Players:GetPlayers()) do createESP(p) end
 Players.PlayerAdded:Connect(createESP)
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
 
 -- 🫥 Invisibilidade
 local INVISIBILIDADE_ATIVADA = false
@@ -105,7 +110,7 @@ local function revelarTudo()
     end
 end
 
--- 🧠 Painel de controles
+-- 🎛️ Painel de botões
 Tools:Toggle{
     Name = "Speed Boost",
     Description = "Aumenta velocidade de andar.",
@@ -133,7 +138,7 @@ Tools:Toggle{
     Description = "Mostra nomes dos jogadores.",
     Callback = function(state)
         ESP_ENABLED = state
-        for _, p in pairs(Players:GetPlayers()) do createESP(p) end
+        for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
     end
 }
 Tools:Toggle{
