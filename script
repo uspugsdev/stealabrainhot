@@ -1,10 +1,10 @@
--- 🎨 Interface de ferramentas
+-- 🎨 Interface de Ferramentas
 local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/refs/heads/main/script"))()
 local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
 local Main = UI:Tab{ Name = "Main" }
 local Tools = Main:Divider{ Name = "Ferramentas" }
 
--- 🔧 Serviços principais
+-- 🔧 Serviços
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,54 +13,14 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
 
--- 🧑‍💻 Lista de donos com nomes
-local donos = { "SeuNomeAqui", "OutroNomeDev" }
-local IS_OWNER = table.find(donos, LocalPlayer.Name) ~= nil
-
--- 🔐 Proteções contra kick e teleport
-if IS_OWNER then
-    LocalPlayer.Kick = function() return end
-    for _, obj in ipairs(getgc(true)) do
-        if type(obj) == "function" and islclosure(obj) then
-            local info = debug.getinfo(obj)
-            if info.name and (info.name:lower():find("kick") or info.name:lower():find("teleport")) then
-                hookfunction(obj, function() return end)
-            end
-        end
-    end
-end
-
--- 🚫 Remoção de teleportadores da workspace
-workspace.DescendantAdded:Connect(function(desc)
-    if desc:IsA("BasePart") and desc.Name:lower():find("teleport") then
-        desc:Destroy()
-    end
-end)
-
--- 👀 Revelar tudo invisível
-local function revelarTudo()
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and part.Transparency > 0 then
-            part.Transparency = 0
-            part.CanTouch = true
-            part.CanQuery = true
-        end
-    end
-end
-
--- 👟 WalkSpeed funcional
+-- 👟 Speed Boost
 local WALKSPEED_ENABLED = false
 local function updateWalkSpeed()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum = Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.WalkSpeed = WALKSPEED_ENABLED and 32 or 16 end
 end
-LocalPlayer.CharacterAdded:Connect(function()
-    Character = LocalPlayer.Character
-    updateWalkSpeed()
-end)
 
--- 🚀 Fly com WASD
+-- 🚀 Fly
 local FLY_ENABLED = false
 local flySpeed = 50
 RunService.RenderStepped:Connect(function()
@@ -74,107 +34,106 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 🌫️ Noclip agressivo
+-- 🌫️ Noclip
 local NOCLIP_ENABLED = false
 RunService.Stepped:Connect(function()
     if NOCLIP_ENABLED and Character then
         for _, part in ipairs(Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
-                part.CanTouch = false
-                part.CanQuery = false
             end
         end
     end
 end)
 
--- 🔎 ESP dos jogadores
-local espBoxes = {}
+-- 👁️ ESP com BillboardGui
 local ESP_ENABLED = false
 local function createESP(player)
-    if player ~= LocalPlayer then
-        local box = Drawing.new("Text")
-        box.Visible = false
-        box.Color = Color3.fromRGB(0, 255, 255)
-        box.Size = 14
-        box.Center = true
-        box.Outline = true
-        box.Text = player.Name
-        espBoxes[player] = box
+    local function attach()
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            if not head:FindFirstChild("ESPGui") then
+                local billboard = Instance.new("BillboardGui", head)
+                billboard.Name = "ESPGui"
+                billboard.Size = UDim2.new(0, 100, 0, 20)
+                billboard.Adornee = head
+                billboard.AlwaysOnTop = true
+
+                local label = Instance.new("TextLabel", billboard)
+                label.Size = UDim2.new(1, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = player.Name
+                label.TextColor3 = Color3.fromRGB(0, 255, 255)
+                label.TextScaled = true
+            end
+        end
     end
+    player.CharacterAdded:Connect(function() wait(1) attach() end)
+    attach()
 end
 for _, p in pairs(Players:GetPlayers()) do createESP(p) end
 Players.PlayerAdded:Connect(createESP)
-RunService.RenderStepped:Connect(function()
-    if ESP_ENABLED then
-        for player, box in pairs(espBoxes) do
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local pos, visible = Camera:WorldToViewportPoint(hrp.Position)
-                box.Position = Vector2.new(pos.X, pos.Y)
-                box.Visible = visible
-            else
-                box.Visible = false
-            end
-        end
-    else
-        for _, box in pairs(espBoxes) do box.Visible = false end
-    end
-end)
 
--- 🫥 Invisibilidade do jogador
+-- 🫥 Invisibilidade
 local INVISIBILIDADE_ATIVADA = false
 local function alternarInvisibilidade()
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("Decal") then
-                part.Transparency = INVISIBILIDADE_ATIVADA and 1 or 0
-            end
+    for _, part in ipairs(Character:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            part.Transparency = INVISIBILIDADE_ATIVADA and 1 or 0
         end
     end
 end
 
--- 🌍 Subterrâneo com retorno
+-- 🌍 Subterrâneo
 local SUBTERRANEO_ATIVADO = false
 local alturaSubterranea = -100
-local alturaNormal = workspace:FindFirstChild("Terrain") and workspace.Terrain.Position.Y or 10
-
+local alturaNormal = workspace:FindFirstChild("Terrain") and workspace.Terrain.Position.Y + 10 or 10
 local function alternarSubterraneo()
     if HRP then
         HRP.CFrame = CFrame.new(HRP.Position.X, SUBTERRANEO_ATIVADO and alturaSubterranea or alturaNormal, HRP.Position.Z)
     end
 end
 
--- 🎛️ Painel de botões
-Tools:Toggle{
-    Name = "ESP All",
-    Description = "Mostra nomes dos jogadores.",
-    Callback = function(state) ESP_ENABLED = state end
-}
-Tools:Toggle{
-    Name = "Fly",
-    Description = "Voo com WASD.",
-    Callback = function(state) FLY_ENABLED = state end
-}
-Tools:Toggle{
-    Name = "Noclip Total",
-    Description = "Atravessa tudo.",
-    Callback = function(state) NOCLIP_ENABLED = state end
-}
+-- 👁️ Revelar invisíveis
+local function revelarTudo()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Transparency > 0 then
+            part.Transparency = 0
+            part.CanTouch = true
+            part.CanQuery = true
+        end
+    end
+end
+
+-- 🧠 Painel de controles
 Tools:Toggle{
     Name = "Speed Boost",
-    Description = "Aumenta velocidade.",
+    Description = "Aumenta velocidade de andar.",
     Callback = function(state)
         WALKSPEED_ENABLED = state
         updateWalkSpeed()
     end
 }
-Tools:Button{
-    Name = "Revelar Invisíveis",
-    Description = "Deixa tudo visível.",
-    Callback = function()
-        revelarTudo()
+Tools:Toggle{
+    Name = "Fly com WASD",
+    Description = "Voo livre com teclas.",
+    Callback = function(state)
+        FLY_ENABLED = state
+    end
+}
+Tools:Toggle{
+    Name = "Noclip Total",
+    Description = "Atravessa tudo.",
+    Callback = function(state)
+        NOCLIP_ENABLED = state
+    end
+}
+Tools:Toggle{
+    Name = "ESP All",
+    Description = "Mostra nomes dos jogadores.",
+    Callback = function(state)
+        ESP_ENABLED = state
+        for _, p in pairs(Players:GetPlayers()) do createESP(p) end
     end
 }
 Tools:Toggle{
@@ -187,9 +146,16 @@ Tools:Toggle{
 }
 Tools:Toggle{
     Name = "Subterrâneo",
-    Description = "Anda abaixo da terra e retorna.",
+    Description = "Anda abaixo do terreno e retorna.",
     Callback = function(state)
         SUBTERRANEO_ATIVADO = state
         alternarSubterraneo()
+    end
+}
+Tools:Button{
+    Name = "Revelar Invisíveis",
+    Description = "Mostra todos os objetos escondidos.",
+    Callback = function()
+        revelarTudo()
     end
 }
