@@ -1,5 +1,5 @@
 -- 🎨 Interface
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/refs/heads/main/script"))()
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
 local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
 local Main = UI:Tab{ Name = "Main" }
 local Tools = Main:Divider{ Name = "Ferramentas" }
@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
 
@@ -52,7 +53,6 @@ RunService.Stepped:Connect(function()
 end)
 
 -- 👁️ ESP com BillboardGui
-local ESP_ENABLED = false
 local function createESP(player)
     local function attach()
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
@@ -73,11 +73,11 @@ local function createESP(player)
             end
         end
     end
-    player.CharacterAdded:Connect(function() wait(1) attach() end)
+    player.CharacterAdded:Connect(function() task.wait(1) attach() end)
     attach()
 end
-Players.PlayerAdded:Connect(createESP)
 for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
 
 -- 🫥 Invisibilidade
 local INVISIBILIDADE_ATIVADA = false
@@ -110,7 +110,7 @@ local function revelarTudo()
     end
 end
 
--- 🎛️ Painel de botões
+-- 🧠 Painel de controles
 Tools:Toggle{
     Name = "Speed Boost",
     Description = "Aumenta velocidade de andar.",
@@ -137,7 +137,6 @@ Tools:Toggle{
     Name = "ESP All",
     Description = "Mostra nomes dos jogadores.",
     Callback = function(state)
-        ESP_ENABLED = state
         for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
     end
 }
