@@ -1,106 +1,101 @@
--- 🎨 Interface
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/uspugsdev/stealabrainhot/main/script"))()
-local UI = Lib:Create{ Theme = "Dark", Size = UDim2.new(0, 555, 0, 300) }
-local Main = UI:Tab{ Name = "Main" }
-local Tools = Main:Divider{ Name = "Ferramentas" }
+-- Interface simplificada
+local gui = Instance.new("ScreenGui", game.CoreGui)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 300)
+frame.Position = UDim2.new(0, 20, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
 
--- 🔧 Serviços
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HRP = Character:WaitForChild("HumanoidRootPart")
 
--- 👟 Speed Boost
-local WALKSPEED_ENABLED = false
-local function updateWalkSpeed()
-    local hum = Character:FindFirstChildWhichIsA("Humanoid")
-    if hum then hum.WalkSpeed = WALKSPEED_ENABLED and 32 or 16 end
-end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-    HRP = Character:WaitForChild("HumanoidRootPart")
-    updateWalkSpeed()
+-- Kick protection leve (sem getgc, hookfunction)
+LocalPlayer.Kick = function() return nil end
+
+-- Noclip
+local noclip = false
+game:GetService("RunService").Stepped:Connect(function()
+    if noclip and Character then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
 end)
 
--- 🚀 Fly
-local FLY_ENABLED = false
+-- Fly
+local flying = false
 local flySpeed = 50
-RunService.RenderStepped:Connect(function()
-    if FLY_ENABLED and HRP then
+game:GetService("RunService").RenderStepped:Connect(function()
+    if flying and HRP then
         local dir = Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
+        local uis = game:GetService("UserInputService")
+        local cam = workspace.CurrentCamera
+        if uis:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
         HRP.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
     end
 end)
 
--- 🌫️ Noclip
-local NOCLIP_ENABLED = false
-RunService.Stepped:Connect(function()
-    if NOCLIP_ENABLED and Character then
-        for _, part in ipairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
+-- Speed
+local speedOn = false
+function toggleSpeed()
+    local hum = Character:FindFirstChildWhichIsA("Humanoid")
+    if hum then hum.WalkSpeed = speedOn and 32 or 16 end
+end
+LocalPlayer.CharacterAdded:Connect(function(c)
+    Character = c
+    HRP = Character:WaitForChild("HumanoidRootPart")
+    toggleSpeed()
 end)
 
--- 👁️ ESP com BillboardGui
-local function createESP(player)
-    local function attach()
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            local head = player.Character.Head
-            if not head:FindFirstChild("ESPGui") then
-                local billboard = Instance.new("BillboardGui", head)
-                billboard.Name = "ESPGui"
-                billboard.Size = UDim2.new(0, 100, 0, 20)
-                billboard.Adornee = head
-                billboard.AlwaysOnTop = true
-
-                local label = Instance.new("TextLabel", billboard)
-                label.Size = UDim2.new(1, 0, 1, 0)
-                label.BackgroundTransparency = 1
-                label.Text = player.Name
-                label.TextColor3 = Color3.fromRGB(0, 255, 255)
-                label.TextScaled = true
-            end
+-- ESP via BillboardGui
+function createESP(player)
+    player.CharacterAdded:Connect(function(char)
+        wait(1)
+        local head = char:FindFirstChild("Head")
+        if head and not head:FindFirstChild("ESPGui") then
+            local esp = Instance.new("BillboardGui", head)
+            esp.Name = "ESPGui"
+            esp.Size = UDim2.new(0, 100, 0, 20)
+            esp.Adornee = head
+            esp.AlwaysOnTop = true
+            local label = Instance.new("TextLabel", esp)
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = player.Name
+            label.TextColor3 = Color3.fromRGB(0, 255, 255)
+            label.TextScaled = true
         end
-    end
-    player.CharacterAdded:Connect(function() task.wait(1) attach() end)
-    attach()
+    end)
 end
-for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+for _, p in pairs(Players:GetPlayers()) do createESP(p) end
 Players.PlayerAdded:Connect(createESP)
 
--- 🫥 Invisibilidade
-local INVISIBILIDADE_ATIVADA = false
-local function alternarInvisibilidade()
-    for _, part in ipairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") or part:IsA("Decal") then
-            part.Transparency = INVISIBILIDADE_ATIVADA and 1 or 0
+-- Invisibilidade
+local invisible = false
+function toggleInvisible()
+    for _, v in pairs(Character:GetDescendants()) do
+        if v:IsA("BasePart") or v:IsA("Decal") then
+            v.Transparency = invisible and 1 or 0
         end
     end
 end
 
--- 🌍 Subterrâneo
-local SUBTERRANEO_ATIVADO = false
-local alturaSubterranea = -100
-local alturaNormal = workspace:FindFirstChild("Terrain") and workspace.Terrain.Position.Y + 10 or 10
-local function alternarSubterraneo()
+-- Subterrâneo
+local underworld = false
+function toggleUnder()
     if HRP then
-        HRP.CFrame = CFrame.new(HRP.Position.X, SUBTERRANEO_ATIVADO and alturaSubterranea or alturaNormal, HRP.Position.Z)
+        HRP.CFrame = CFrame.new(HRP.Position.X, underworld and -100 or 10, HRP.Position.Z)
     end
 end
 
--- 👁️ Revelar invisíveis
-local function revelarTudo()
+-- Reveal invisíveis
+function reveal()
     for _, part in ipairs(workspace:GetDescendants()) do
         if part:IsA("BasePart") and part.Transparency > 0 then
             part.Transparency = 0
@@ -110,56 +105,38 @@ local function revelarTudo()
     end
 end
 
--- 🧠 Painel de controles
-Tools:Toggle{
-    Name = "Speed Boost",
-    Description = "Aumenta velocidade de andar.",
-    Callback = function(state)
-        WALKSPEED_ENABLED = state
-        updateWalkSpeed()
-    end
-}
-Tools:Toggle{
-    Name = "Fly com WASD",
-    Description = "Voo livre com teclas.",
-    Callback = function(state)
-        FLY_ENABLED = state
-    end
-}
-Tools:Toggle{
-    Name = "Noclip Total",
-    Description = "Atravessa tudo.",
-    Callback = function(state)
-        NOCLIP_ENABLED = state
-    end
-}
-Tools:Toggle{
-    Name = "ESP All",
-    Description = "Mostra nomes dos jogadores.",
-    Callback = function(state)
-        for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
-    end
-}
-Tools:Toggle{
-    Name = "Invisibilidade",
-    Description = "Deixa o jogador invisível.",
-    Callback = function(state)
-        INVISIBILIDADE_ATIVADA = state
-        alternarInvisibilidade()
-    end
-}
-Tools:Toggle{
-    Name = "Subterrâneo",
-    Description = "Anda abaixo do terreno e retorna.",
-    Callback = function(state)
-        SUBTERRANEO_ATIVADO = state
-        alternarSubterraneo()
-    end
-}
-Tools:Button{
-    Name = "Revelar Invisíveis",
-    Description = "Mostra todos os objetos escondidos.",
-    Callback = function()
-        revelarTudo()
-    end
-}
+-- Criação dos botões
+local function makeButton(name, action)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, #frame:GetChildren()*35)
+    btn.Text = name
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.MouseButton1Click:Connect(action)
+end
+
+makeButton("Speed Boost", function()
+    speedOn = not speedOn
+    toggleSpeed()
+end)
+makeButton("Fly", function()
+    flying = not flying
+end)
+makeButton("Noclip", function()
+    noclip = not noclip
+end)
+makeButton("Invisibilidade", function()
+    invisible = not invisible
+    toggleInvisible()
+end)
+makeButton("Subterrâneo", function()
+    underworld = not underworld
+    toggleUnder()
+end)
+makeButton("Revelar Invisíveis", function()
+    reveal()
+end)
+makeButton("ESP Players", function()
+    for _, p in pairs(Players:GetPlayers()) do createESP(p) end
+end)
